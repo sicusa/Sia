@@ -9,7 +9,7 @@
 ---@operator call:scheduler
 local scheduler = {}
 
----@alias scheduler.callback fun(...): boolean | nil
+---@alias scheduler.callback fun(...): any
 ---@alias scheduler.task_graph_node.status
 ---| "added"
 ---| "adding"
@@ -17,8 +17,8 @@ local scheduler = {}
 
 ---@class scheduler.task_graph_node
 ---@field callback scheduler.callback
----@field depended_nodes? table<scheduler.task_graph_node, boolean>
----@field depending_nodes? table<scheduler.task_graph_node, boolean>
+---@field depended_nodes? table<scheduler.task_graph_node, true>
+---@field depending_nodes? table<scheduler.task_graph_node, true>
 ---@field status? scheduler.task_graph_node.status
 
 scheduler.__index = scheduler
@@ -47,7 +47,7 @@ function scheduler:create_task(callback, dependencies)
 
     local task_nodes = self._task_graph_nodes
 
-    if dependencies == nil then
+    if dependencies == nil or #dependencies == 0 then
         local task_seq = self._orphan_task_seq
         local index = #task_seq + 1
         task_seq[index] = node
@@ -83,7 +83,7 @@ function scheduler:remove_task(node)
 
     if value == nil or node.status == "removed" then
         error("cannot remove task: invalid task graph node")
-    elseif node.depending_nodes ~= nil and #node.depending_nodes ~= 0 then
+    elseif node.depending_nodes ~= nil or #node.depending_nodes ~= 0 then
         error("cannot remove task: there are other tasks depending on it")
     end
 
@@ -126,9 +126,10 @@ function scheduler:get_task_count()
 end
 
 ---@param task_seq scheduler.task_graph_node[]
+---@param offset integer
 ---@param node scheduler.task_graph_node
 ---@return integer
-local function add_depended_tasks(task_seq, node)
+local function add_depended_tasks(task_seq, offset, node)
     local status = node.status
     if node.depended_nodes == nil or status == "added" then
         return 0
@@ -139,10 +140,10 @@ local function add_depended_tasks(task_seq, node)
 
     local count = 0
     for dep_node in pairs(node.depended_nodes) do
-        count = count + add_depended_tasks(task_seq, dep_node)
+        count = count + add_depended_tasks(task_seq, count + offset, dep_node)
     end
 
-    task_seq[#task_seq+1] = node
+    task_seq[count + offset + 1] = node
     node.status = "added"
     return count
 end
@@ -156,7 +157,7 @@ function scheduler:tick(...)
         local count = 0
 
         for node in pairs(self._task_graph_nodes) do
-            count = count + add_depended_tasks(depended_task_seq, node)
+            count = count + add_depended_tasks(depended_task_seq, count, node)
         end
 
         for node in pairs(self._task_graph_nodes) do

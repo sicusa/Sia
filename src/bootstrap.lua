@@ -1,5 +1,6 @@
 local entity = require("entity")
 local world = require("world")
+local system = require("system")
 local scheduler = require("scheduler")
 
 local transform = entity.component(function(props)
@@ -62,30 +63,47 @@ print(#all)
 print(#transforms)
 
 local sched = scheduler()
-local t1 = sched:create_task(function()
-    print("task 1")
+
+local timer = entity.component(function()
+    return {0}
 end)
 
-local t2 = sched:create_task(function()
-    print("task 2")
-    return true
-end, {t1})
+---@param time number
+function timer:add_time(time)
+    self[1] = self[1] + time
+end
 
-local t3 = sched:create_task(function()
-    print("task 3")
-    return true
-end, {t1, t2})
+local timer_system = system {
+    select = {timer},
+    handler = function(e, dt)
+        local t = e[timer]
+        t:add_time(dt)
+        print("timer1: "..t[1])
+    end
+}
+local _, dispose = timer_system:register(w, sched)
 
-local t4 = sched:create_task(function()
-    print("task 4")
-    return true
-end, {t3})
+local timer_system2 = system {
+    select = {timer},
+    dependencies = {timer_system},
 
-local t5 = sched:create_task(function()
-    print("task 5")
-    sched:remove_task(t1)
-    return true
-end, {t2, t4})
+    handler = function(e, dt)
+        local t = e[timer]
+        t:add_time(dt)
+        print("timer2: "..t[1])
+    end
+}
+timer_system2:register(w, sched)
 
-sched:tick()
-print(sched:get_task_count())
+dispose()
+
+w:add(entity {
+    timer()
+})
+
+w:add(entity {
+    timer()
+})
+
+sched:tick(0.5)
+sched:tick(0.5)

@@ -88,6 +88,8 @@ function world:add(entity)
             g:add(entity)
         end
     end
+
+    return true
 end
 
 function world:remove(entity)
@@ -99,6 +101,8 @@ function world:remove(entity)
     for i = 1, #groups do
         groups[i]:remove(entity)
     end
+
+    return true
 end
 
 function world:clear()

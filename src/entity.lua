@@ -1,26 +1,19 @@
 ---Container of `entity.component`
 ---@class entity
----@field [table] entity.component
 ---@operator call(entity.component[]): entity
 local entity = {}
-
----@param component table
----@return table
-local function get_component_meta(component, i)
-    local mt = getmetatable(component)
-    if type(mt) == "table" then
-        return mt
-    else
-        error("entity component must have metatable #"..i)
-    end
-end
 
 entity.__index = entity
 setmetatable(entity, {
     __call = function(self, components)
         local instance = setmetatable({}, self)
-        for i, component in ipairs(components) do
-            instance[get_component_meta(component, i)] = component
+        for i = 1, #components do
+            local comp = components[i]
+            local mt = getmetatable(comp)
+            if type(mt) ~= "table" then
+                error("entity component must have metatable #"..i)
+            end
+            instance[mt] = comp
         end
         return instance
     end
@@ -37,6 +30,7 @@ component.__index = component
 setmetatable(component, {
     __call = function(self, initializer)
         local instance = setmetatable({}, self)
+        instance.__index = instance
         instance._initializer = initializer
         return instance;
     end
