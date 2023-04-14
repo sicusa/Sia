@@ -18,6 +18,11 @@ local system = {}
 ---@field handler system.entity_handler
 ---@field command_receiver? system.command_receiver
 
+---@type system.command_receiver
+local function default_command_receiver(cmd, world, sched)
+    cmd:execute(world, sched)
+end
+
 system.__index = system
 setmetatable(system, {
     __call = function(self, options)
@@ -25,7 +30,8 @@ setmetatable(system, {
         instance._select = options.select
         instance._dependencies = options.dependencies
         instance._handler = options.handler
-        instance._command_receiver = options.command_receiver
+        instance._command_receiver =
+            options.command_receiver or default_command_receiver
         instance._tasks = {}
         return instance
     end
@@ -75,24 +81,15 @@ function system:register(world, sched)
         return true
     end)
 
-    local task
-
     local cmd_receiver = self._command_receiver
-    if cmd_receiver then
-        task = sched:create_task(function(...)
-            for i = 1, #group do
-                local cmd = handler(group[i], ...)
-                if cmd then cmd_receiver(cmd, world, sched) end
+    local task = sched:create_task(function(...)
+        for i = 1, #group do
+            local cmd = handler(group[i], ...)
+            if cmd then
+                cmd_receiver(cmd, world, sched)
             end
-        end, dep_tasks)
-    else
-        task = sched:create_task(function(...)
-            for i = 1, #group do
-                local cmd = handler(group[i], ...)
-                if cmd then cmd:execute(world, sched) end
-            end
-        end, dep_tasks)
-    end
+        end
+    end, dep_tasks)
 
     local tasks = self._tasks
     local tasks_entry = tasks[sched]

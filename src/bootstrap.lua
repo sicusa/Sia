@@ -81,7 +81,7 @@ local timer_system = system {
         print("timer1: "..t[1])
     end
 }
-local _, dispose = timer_system:register(w, sched)
+timer_system:register(w, sched)
 
 local timer_system2 = system {
     select = {timer},
@@ -94,8 +94,6 @@ local timer_system2 = system {
     end
 }
 timer_system2:register(w, sched)
-
-dispose()
 
 w:add(entity {
     timer()
