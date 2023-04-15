@@ -1,8 +1,10 @@
 local group = require("group")
+local dispatcher = require("dispatcher")
 
----Group that filters entity into subgroups
+---Group that filter entity into subgroups
 ---@class world: group
----@field private _groups world.group[]
+---@field package _groups world.group[]
+---@field dispatcher dispatcher
 ---@operator call(entity[]?): world
 local world = {}
 
@@ -14,9 +16,10 @@ local world = {}
 world.__index = world
 setmetatable(world, {
     __index = group,
-    __call = function(self, entities)
-        local instance = setmetatable(group(entities), self)
+    __call = function(_, entities)
+        local instance = setmetatable(group(entities), world)
         instance._groups = {}
+        instance.dispatcher = dispatcher()
         return instance
     end
 })
@@ -89,6 +92,7 @@ function world:add(entity)
         end
     end
 
+    self.dispatcher:send("add", entity, self)
     return true
 end
 
@@ -102,12 +106,18 @@ function world:remove(entity)
         groups[i]:remove(entity)
     end
 
+    self.dispatcher:send("remove", entity, self)
     return true
 end
 
 function world:clear()
     if #self == 0 then
         return
+    end
+
+    local disp = self.dispatcher
+    for i = 1, #self do
+        disp:send('remove', self[i], self)
     end
 
     group.clear(self)
@@ -154,6 +164,13 @@ function world:refresh(entity)
             end
         end
     end
+end
+
+---@param entity entity
+---@param command entity.component.command
+function world:modify(entity, command, ...)
+    self.dispatcher:send(command, entity, ...)
+    command(entity[command.component], ...)
 end
 
 return world

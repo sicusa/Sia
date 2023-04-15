@@ -2,15 +2,15 @@ local entity = require("entity")
 
 ---Container of `entity`
 ---@class group
----@field private _indices table<entity, integer>
+---@field package _indices table<entity, integer>
 ---@field [integer] entity
 ---@operator call(entity[]?): group
 local group = {}
 
 group.__index = group
 setmetatable(group, {
-    __call = function(self, entities)
-        local instance = setmetatable({}, self)
+    __call = function(_, entities)
+        local instance = setmetatable({}, group)
 
         local indices = {}
         instance._indices = indices

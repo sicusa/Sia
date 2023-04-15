@@ -1,15 +1,16 @@
+---Manager of tasks that can depend on each other
 ---@class scheduler
----@field private _task_count integer
----@field private _orphan_task_seq scheduler.task_graph_node[]
----@field private _depended_task_seq scheduler.task_graph_node[]
----@field private _depended_task_seq_dirty boolean
----@field private _task_graph_nodes table<scheduler.task_graph_node, boolean | integer>
----@field private _tasks_to_remove scheduler.task_graph_node[]
----@field private _ticking boolean
+---@field package _task_count integer
+---@field package _orphan_task_seq scheduler.task_graph_node[]
+---@field package _depended_task_seq scheduler.task_graph_node[]
+---@field package _depended_task_seq_dirty boolean
+---@field package _task_graph_nodes table<scheduler.task_graph_node, boolean | integer>
+---@field package _tasks_to_remove scheduler.task_graph_node[]
+---@field package _ticking boolean
 ---@operator call:scheduler
 local scheduler = {}
 
----@alias scheduler.callback fun(...): any
+---@alias scheduler.callback fun(): any
 ---@alias scheduler.task_graph_node.status
 ---| "added"
 ---| "adding"
@@ -23,8 +24,8 @@ local scheduler = {}
 
 scheduler.__index = scheduler
 setmetatable(scheduler, {
-    __call = function(self)
-        local instance = setmetatable({}, self)
+    __call = function(_)
+        local instance = setmetatable({}, scheduler)
         instance._task_count = 0
         instance._orphan_task_seq = {}
         instance._depended_task_seq = {}
@@ -148,7 +149,7 @@ local function add_depended_tasks(task_seq, offset, node)
     return count
 end
 
-function scheduler:tick(...)
+function scheduler:tick()
     local orphan_task_seq = self._orphan_task_seq
     local depended_task_seq = self._depended_task_seq
 
@@ -178,14 +179,14 @@ function scheduler:tick(...)
 
     for i = 1, #orphan_task_seq do
         local node = orphan_task_seq[i]
-        if node.callback(...) then
+        if node.callback() then
             tasks_to_remove[#tasks_to_remove+1] = node
         end
     end
 
     for i = 1, #depended_task_seq do
         local node = depended_task_seq[i]
-        if node.callback(...) then
+        if node.callback() then
             tasks_to_remove[#tasks_to_remove+1] = node
         end
     end

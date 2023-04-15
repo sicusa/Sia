@@ -1,41 +1,65 @@
-local entity = require("entity")
-
+---Logic for entities
 ---@class system
----@field private _select table[]
----@field private _dependencies system[]
----@field private _handler system.entity_handler
----@field private _command_receiver system.command_receiver
----@field private _tasks table<scheduler, table<scheduler.task_graph_node, world>>
+---@field package _select table[]
+---@field package _select_key string
+---@field package _dependencies system[]
+---@field package _executor system.executor
+---@field package _tasks table<scheduler, table<scheduler.task_graph_node, world>>
 ---@operator call(system.options): system
 local system = {}
 
----@alias system.entity_handler fun(entity: entity, ...): command | nil
----@alias system.command_receiver fun(command: command, world?: world, sched?: scheduler)
+---@alias system.executor fun(group: system.group, world?: world, sched?: scheduler, ...): any
 
 ---@class system.options
 ---@field select table[]
 ---@field dependencies system[]
----@field handler system.entity_handler
----@field command_receiver? system.command_receiver
+---@field execute system.executor
 
----@type system.command_receiver
-local function default_command_receiver(cmd, world, sched)
-    cmd:execute(world, sched)
+---@param select table[]
+---@return string
+local function calculate_select_key(select)
+    local t = {}
+    for i = 1, #select do
+        t[#t+1] = tostring(select[i])
+    end
+    table.sort(t)
+    return table.concat(t)
 end
 
 system.__index = system
 setmetatable(system, {
-    __call = function(self, options)
-        local instance = setmetatable({}, self)
+    __call = function(_, options)
+        local instance = setmetatable({}, system)
         instance._select = options.select
+        instance._select_key = calculate_select_key(options.select)
         instance._dependencies = options.dependencies
-        instance._handler = options.handler
-        instance._command_receiver =
-            options.command_receiver or default_command_receiver
+        instance._executor = options.execute
         instance._tasks = {}
         return instance
     end
 })
+
+---@class system.group: world.group
+---@field package _system_ref_count number
+
+---@type table<world, table<string, system.group>>
+local world_groups_cache = {}
+
+---@param world world
+---@param select entity.component[]
+---@return system.group
+local function create_system_group(world, select)
+    local group = world:create_group(function(e)
+        for i = 1, #select do
+            if e[select[i]] == nil then
+                return false
+            end
+        end
+        return true
+    end)
+    group._system_ref_count = 1
+    return group --[[@as system.group]]
+end
 
 ---@param world world
 ---@param sched scheduler
@@ -70,27 +94,30 @@ function system:register(world, sched)
     end
 
     local select = self._select
-    local handler = self._handler
+    local select_key = self._select_key
 
-    local group = world:create_group(function(e)
-        for i = 1, #select do
-            if e[select[i]] == nil then
-                return false
-            end
-        end
-        return true
-    end)
+    local groups_cache = world_groups_cache[world]
+    local group
 
-    local cmd_receiver = self._command_receiver
-    local task = sched:create_task(function(...)
-        for i = 1, #group do
-            local cmd = handler(group[i], ...)
-            if cmd then
-                cmd_receiver(cmd, world, sched)
-            end
+    if groups_cache == nil then
+        group = create_system_group(world, select)
+        groups_cache = {[select_key] = group}
+        world_groups_cache[world] = groups_cache
+    else
+        group = groups_cache[select_key]
+        if group == nil then
+            group = create_system_group(world, select)
+            groups_cache[select_key] = {[select_key] = group}
+        else
+            group._system_ref_count = group._system_ref_count + 1
         end
+    end
+
+    local executor = self._executor
+    local task = sched:create_task(function()
+        return executor(group, world, sched)
     end, dep_tasks)
-
+    
     local tasks = self._tasks
     local tasks_entry = tasks[sched]
 
@@ -102,11 +129,22 @@ function system:register(world, sched)
 
     return task, function()
         sched:remove_task(task)
-        world:remove_group(group)
 
         tasks_entry[task] = nil
         if next(tasks_entry) == nil then
             tasks[sched] = nil
+        end
+
+        local group_ref_count = group._system_ref_count
+        if group_ref_count == 0 then
+            world:remove_group(group)
+            groups_cache[select_key] = nil
+
+            if next(groups_cache) == nil then
+                world_groups_cache[world] = nil
+            end
+        else
+            group._system_ref_count = group._system_ref_count - 1
         end
     end
 end
