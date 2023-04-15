@@ -8,8 +8,8 @@
             "type": "lua",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/src/bootstrap.lua",
-            "path": "${workspaceFolder}/src/?.lua",
+            "program": "${workspaceFolder}/examples/mygame.lua",
+            "path": "${workspaceFolder}/src/?.lua;${workspaceFolder}/examples/?.lua",
             "stopOnEntry": false
         }
     ]

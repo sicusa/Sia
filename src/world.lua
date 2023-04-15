@@ -107,6 +107,7 @@ function world:remove(entity)
     end
 
     self.dispatcher:send("remove", entity, self)
+    self.dispatcher:clear_listeners_on(entity)
     return true
 end
 
@@ -132,27 +133,7 @@ end
 function world:refresh(entity)
     local groups = self._groups
 
-    if entity == nil then
-        for i = 1, #groups do
-            local g = groups[i]
-            local pred = g.predicate
-
-            if pred == nil then
-                for j = 1, #self do
-                    g:add(self[i])
-                end
-            else
-                for j = 1, #self do
-                    local e = self[i]
-                    if pred(e) then
-                        g:add(e)
-                    else
-                        g:remove(e)
-                    end
-                end
-            end
-        end
-    else
+    if entity ~= nil then
         for i = 1, #groups do
             local g = groups[i]
             local pred = g.predicate
@@ -163,14 +144,39 @@ function world:refresh(entity)
                 g:remove(entity)
             end
         end
+        return
+    end
+
+    for i = 1, #groups do
+        local g = groups[i]
+        local pred = g.predicate
+
+        if pred == nil then
+            for j = 1, #self do
+                g:add(self[i])
+            end
+        else
+            for j = 1, #self do
+                local e = self[i]
+                if pred(e) then
+                    g:add(e)
+                else
+                    g:remove(e)
+                end
+            end
+        end
     end
 end
 
 ---@param entity entity
 ---@param command entity.component.command
 function world:modify(entity, command, ...)
+    local comp = entity[command.component]
+    if comp == nil then
+        error("cannot modify entity: component not found")
+    end
+    command(comp, ...)
     self.dispatcher:send(command, entity, ...)
-    command(entity[command.component], ...)
 end
 
 return world

@@ -22,6 +22,7 @@ setmetatable(entity, {
 ---Pure data stored in `entity`
 ---@class entity.component
 ---@field package _initializer fun(...): table
+---@field [string] any
 ---@operator call(fun(...): table): entity.component
 local component = {}
 entity.component = component
@@ -47,8 +48,10 @@ local command = {
 
 ---@param command_name string
 ---@param handler fun(component: entity.component, ...) | nil
+---@return entity.component
 function component:on(command_name, handler)
     self[command_name] = setmetatable({handler, component = self}, command)
+    return self
 end
 
 function component:__call(...)

@@ -1,4 +1,4 @@
----Manager of tasks that can depend on each other
+---Manager of tasks that constitute a dependency graph
 ---@class scheduler
 ---@field package _task_count integer
 ---@field package _orphan_task_seq scheduler.task_graph_node[]
@@ -10,7 +10,7 @@
 ---@operator call:scheduler
 local scheduler = {}
 
----@alias scheduler.callback fun(): any
+---@alias scheduler.callback fun(): any | nil
 ---@alias scheduler.task_graph_node.status
 ---| "added"
 ---| "adding"
@@ -77,6 +77,42 @@ function scheduler:create_task(callback, dependencies)
     return node
 end
 
+---@param self scheduler
+---@param task_nodes table<scheduler.task_graph_node, boolean | integer>
+---@param value boolean | integer
+---@param node scheduler.task_graph_node
+local function raw_remove_task(self, task_nodes, value, node)
+    if type(value) == "number" then
+        -- orphan task
+        local task_seq = self._orphan_task_seq
+        local last_i = #task_seq
+
+        if last_i == value then
+            task_seq[last_i] = nil
+            task_nodes[node] = nil
+        else
+            local last_node = task_seq[last_i]
+            task_seq[value] = last_node
+            task_seq[last_i] = nil
+
+            task_nodes[node] = nil
+            task_nodes[last_node] = value
+        end
+    else
+        -- depending task
+        for depended_node in pairs(node.depended_nodes) do
+            local dep_nodes = depended_node.depending_nodes
+            if dep_nodes == nil then
+                error("cannot remove task: corrupted task graph")
+            end
+            dep_nodes[node] = nil
+        end
+
+        task_nodes[node] = nil
+        self._depended_task_seq_dirty = true
+    end
+end
+
 ---@param node scheduler.task_graph_node
 function scheduler:remove_task(node)
     local task_nodes = self._task_graph_nodes
@@ -97,29 +133,7 @@ function scheduler:remove_task(node)
         return
     end
 
-    if type(value) == "number" then
-        -- orphan task
-        local task_seq = self._orphan_task_seq
-        local last_node = task_seq[#task_seq]
-
-        task_seq[value] = last_node
-        task_seq[#task_seq] = nil
-
-        task_nodes[value] = nil
-        task_nodes[last_node] = value
-    else
-        -- depending task
-        for depended_node in pairs(node.depended_nodes) do
-            local dep_nodes = depended_node.depending_nodes
-            if dep_nodes == nil then
-                error("cannot remove task: corrupted task graph")
-            end
-            dep_nodes[node] = nil
-        end
-
-        task_nodes[value] = nil
-        self._depended_task_seq_dirty = true
-    end
+    raw_remove_task(self, task_nodes, value, node)
 end
 
 function scheduler:get_task_count()
@@ -196,7 +210,9 @@ function scheduler:tick()
     for i = 1, #tasks_to_remove do
         local node = tasks_to_remove[i]
         if node.status ~= "removed" then
-            self:remove_task(node)
+            local task_nodes = self._task_graph_nodes
+            local value = task_nodes[node]
+            raw_remove_task(self, task_nodes, value, node)
         end
         tasks_to_remove[i] = nil
     end

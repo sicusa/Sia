@@ -53,19 +53,25 @@ function group:remove(entity)
         return false
     end
 
-    local last_entity = self[#self]
-    self[index] = last_entity
-    self[#self] = nil
+    local last_i = #self
+    if last_i == index then
+        self[last_i] = nil
+        indices[entity] = nil
+    else
+        local last_entity = self[last_i]
+        self[index] = last_entity
+        self[last_i] = nil
 
-    indices[entity] = nil
-    indices[last_entity] = index
+        indices[entity] = nil
+        indices[last_entity] = index
+    end
 
     return true
 end
 
 ---@param entity entity
 ---@return boolean
-function group:has(entity)
+function group:contains(entity)
     return self._indices[entity] ~= nil
 end
 
