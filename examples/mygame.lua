@@ -1,7 +1,7 @@
-local entity = require("entity")
-local world = require("world")
-local system = require("system")
-local scheduler = require("scheduler")
+local entity = require("sia.entity")
+local world = require("sia.world")
+local system = require("sia.system")
+local scheduler = require("sia.scheduler")
 
 ---@class mygame: world
 ---@field delta_time number
@@ -59,16 +59,16 @@ end)
 
 local location_damge_system = system {
     select = {transform, health},
-    trigger = {transform.set_position},
+    trigger = {"add", transform.set_position},
     execute = function(world, sched, e)
         local p = e[transform].position
         -- test damage
         if p[1] == 1 and p[2] == 1 then
             world:modify(e, health.damage, 10)
-            print("一次性伤害：HP "..e[health].value)
+            print("Damge -> HP "..e[health].value)
         elseif p[1] == 1 and p[2] == 2 then
             world:modify(e, health.set_debuff, 100)
-            print("激活持续性伤害！")
+            print("Debuff!")
         end
     end
 }
@@ -79,7 +79,7 @@ local health_update_system = system {
         local debuff = e[health].debuff
         if debuff ~= 0 then
             world:modify(e, health.damage, debuff * world.delta_time)
-            print("持续性伤害：HP "..e[health].value)
+            print("Damge -> HP "..e[health].value)
         end
     end
 }
@@ -90,7 +90,7 @@ local death_system = system {
     execute = function(world, sched, e)
         if e[health].value <= 0 then
             world:remove(e)
-            print("死亡！")
+            print("Dead!")
         end
     end
 }
@@ -117,28 +117,33 @@ local gameplay_systems = system {
     }
 }
 
-local _, dispose_health_systems = health_systems:register(mygame, mygame.scheduler)
-local _, dispose_gameplay_systems = gameplay_systems:register(mygame, mygame.scheduler)
+local health_systems_task, dispose_health_systems =
+    health_systems:register(mygame, mygame.scheduler)
+local gameplay_systems_task, dispose_gameplay_systems =
+    gameplay_systems:register(mygame, mygame.scheduler)
 
-local e = entity {
+local player = entity {
     transform {
-        position = {1, 0}
+        position = {1, 1}
     },
     health(200)
 }
-mygame:add(e)
-
-mygame:modify(e, transform.set_position, {1, 1})
+mygame:add(player)
 mygame:update(0.5)
 
-mygame:modify(e, transform.set_position, {1, 2})
+mygame:modify(player, transform.set_position, {1, 2})
 mygame:update(0.5)
 
-mygame:modify(e, transform.set_position, {1, 3})
+mygame.scheduler:create_task(function()
+    print("Callback invoked after gameplay and health systems")
+    return true -- remove task
+end, {health_systems_task, gameplay_systems_task})
+
+mygame:modify(player, transform.set_position, {1, 3})
 mygame:update(0.5)
 mygame:update(0.5)
 mygame:update(0.5)
-mygame:update(0.5)
+mygame:update(0.5) -- player dead
 
 dispose_health_systems()
 dispose_gameplay_systems()

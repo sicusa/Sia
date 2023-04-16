@@ -1,4 +1,4 @@
-local group = require("group")
+local group = require("sia.group")
 
 ---@class system
 ---@field name? string
@@ -8,7 +8,7 @@ local group = require("group")
 ---@field children? system[]
 ---@field depend? system[]
 ---@field select? table[]
----@field trigger? table<entity.component.command, true>
+---@field trigger? table<system.triggerable_command, true>
 ---@field execute? system.executor
 ---@field package _select_key string
 ---@field package _tasks table<scheduler, table<scheduler.task_graph_node, world>>
@@ -16,6 +16,7 @@ local group = require("group")
 local system = {}
 
 ---@alias system.executor fun(world?: world, sched?: scheduler, entity?: entity): any
+---@alias system.triggerable_command entity.component.command | "add" | "remove"
 
 ---@class system.options
 ---@field name? string
@@ -25,7 +26,7 @@ local system = {}
 ---@field children? system[]
 ---@field depend? system[]
 ---@field select? table[]
----@field trigger? entity.component.command[]
+---@field trigger? system.triggerable_command[]
 ---@field execute? system.executor
 
 ---@param select table[]
@@ -201,25 +202,38 @@ function system:register(world, sched, parent_task)
             select_group = group()
             monitor_entities = {}
 
+            local has_add_trigger = trigger["add"]
+            local has_remove_trigger = trigger["remove"]
+
             entity_add_listener = function(_, e)
                 for i = 1, #select do
                     if e[select[i]] == nil then
                         return
                     end
                 end
+
                 local trigger_listener = function(command)
                     if trigger[command] then
                         select_group:add(e)
                     end
                 end
+
                 disp:listen_on(e, trigger_listener)
                 monitor_entities[e] = trigger_listener
-                select_group:add(e)
+
+                if has_add_trigger then
+                    select_group:add(e)
+                end
             end
 
             entity_remove_listener = function(_, e)
-                select_group:remove(e)
                 monitor_entities[e] = nil
+
+                if has_remove_trigger then
+                    select_group:add(e)
+                else
+                    select_group:remove(e)
+                end
             end
 
             disp:listen("add", entity_add_listener)

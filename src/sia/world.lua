@@ -1,10 +1,10 @@
-local group = require("group")
-local dispatcher = require("dispatcher")
+local group = require("sia.group")
+local dispatcher = require("sia.dispatcher")
 
 ---@class world: group
 ---@field package _groups world.group[]
 ---@field dispatcher dispatcher
----@operator call(entity[]?): world
+---@operator call(dispatcher?): world
 local world = {}
 
 ---@class world.group: group
@@ -15,10 +15,10 @@ local world = {}
 world.__index = world
 setmetatable(world, {
     __index = group,
-    __call = function(_, entities)
-        local instance = setmetatable(group(entities), world)
+    __call = function(_, custom_dispatcher)
+        local instance = setmetatable(group(), world)
+        instance.dispatcher = custom_dispatcher or dispatcher()
         instance._groups = {}
-        instance.dispatcher = dispatcher()
         return instance
     end
 })

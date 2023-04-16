@@ -1,4 +1,4 @@
-local entity = require("entity")
+local entity = require("sia.entity")
 
 ---@class group
 ---@field package _indices table<entity, integer>
