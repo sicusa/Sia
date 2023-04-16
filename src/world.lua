@@ -1,7 +1,6 @@
 local group = require("group")
 local dispatcher = require("dispatcher")
 
----Group that filter entity into subgroups
 ---@class world: group
 ---@field package _groups world.group[]
 ---@field dispatcher dispatcher

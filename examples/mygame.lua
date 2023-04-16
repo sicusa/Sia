@@ -59,32 +59,27 @@ end)
 
 local location_damge_system = system {
     select = {transform, health},
-    execute = function(world, sched, group)
-        for i = 1, #group do
-            local e = group[i]
-            local p = e[transform].position
-            -- test damage
-            if p[1] == 1 and p[2] == 1 then
-                world:modify(e, health.damage, 10)
-                print("一次性伤害：HP "..e[health].value)
-            elseif p[1] == 1 and p[2] == 2 then
-                world:modify(e, health.set_debuff, 100)
-                print("激活持续性伤害！")
-            end
+    trigger = {transform.set_position},
+    execute = function(world, sched, e)
+        local p = e[transform].position
+        -- test damage
+        if p[1] == 1 and p[2] == 1 then
+            world:modify(e, health.damage, 10)
+            print("一次性伤害：HP "..e[health].value)
+        elseif p[1] == 1 and p[2] == 2 then
+            world:modify(e, health.set_debuff, 100)
+            print("激活持续性伤害！")
         end
     end
 }
 
 local health_update_system = system {
     select = {health},
-    execute = function(world, sched, group)
-        for i = 1, #group do
-            local e = group[i]
-            local debuff = e[health].debuff
-            if debuff ~= 0 then
-                world:modify(e, health.damage, debuff * world.delta_time)
-                print("持续性伤害：HP "..e[health].value)
-            end
+    execute = function(world, sched, e)
+        local debuff = e[health].debuff
+        if debuff ~= 0 then
+            world:modify(e, health.damage, debuff * world.delta_time)
+            print("持续性伤害：HP "..e[health].value)
         end
     end
 }
@@ -92,18 +87,19 @@ local health_update_system = system {
 local death_system = system {
     select = {health},
     depend = {health_update_system},
-    execute = function(world, sched, group)
-        for i = 1, #group do
-            local e = group[i]
-            if e[health].value <= 0 then
-                world:remove(e)
-                print("死亡！")
-            end
+    execute = function(world, sched, e)
+        if e[health].value <= 0 then
+            world:remove(e)
+            print("死亡！")
         end
     end
 }
 
 local health_systems = system {
+    name = "sia.example.mygame.health",
+    authors = {"Phlamcenth Sicusa"},
+    description = "Health systems",
+    version = {0, 0, 1},
     children = {
         health_update_system,
         death_system
@@ -111,14 +107,18 @@ local health_systems = system {
 }
 
 local gameplay_systems = system {
+    name = "sia.example.mygame.gameplay",
+    authors = {"Phlamcenth Sicusa"},
+    description = "Gameplay systems",
+    version = {0, 0, 1},
     depend = {health_systems},
     children = {
         location_damge_system
     }
 }
 
-health_systems:register(mygame, mygame.scheduler)
-gameplay_systems:register(mygame, mygame.scheduler)
+local _, dispose_health_systems = health_systems:register(mygame, mygame.scheduler)
+local _, dispose_gameplay_systems = gameplay_systems:register(mygame, mygame.scheduler)
 
 local e = entity {
     transform {
@@ -139,3 +139,6 @@ mygame:update(0.5)
 mygame:update(0.5)
 mygame:update(0.5)
 mygame:update(0.5)
+
+dispose_health_systems()
+dispose_gameplay_systems()

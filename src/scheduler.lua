@@ -1,4 +1,3 @@
----Manager of tasks that constitute a dependency graph
 ---@class scheduler
 ---@field package _task_count integer
 ---@field package _orphan_task_seq scheduler.task_graph_node[]
@@ -120,7 +119,7 @@ function scheduler:remove_task(node)
 
     if value == nil or node.status == "removed" then
         error("cannot remove task: invalid task graph node")
-    elseif node.depending_nodes ~= nil or #node.depending_nodes ~= 0 then
+    elseif node.depending_nodes ~= nil and #node.depending_nodes ~= 0 then
         error("cannot remove task: there are other tasks depending on it")
     end
 

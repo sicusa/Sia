@@ -1,20 +1,31 @@
----Logic for entities
+local group = require("group")
+
 ---@class system
----@field package _children? system[]
----@field package _select? table[]
+---@field name? string
+---@field description? string
+---@field authors? string[]
+---@field version? number[]
+---@field children? system[]
+---@field depend? system[]
+---@field select? table[]
+---@field trigger? table<entity.component.command, true>
+---@field execute? system.executor
 ---@field package _select_key string
----@field package _dependencies? system[]
----@field package _execute? system.executor
 ---@field package _tasks table<scheduler, table<scheduler.task_graph_node, world>>
 ---@operator call(system.options): system
 local system = {}
 
----@alias system.executor fun(world?: world, sched?: scheduler, group?: system.group, ...): any
+---@alias system.executor fun(world?: world, sched?: scheduler, entity?: entity): any
 
 ---@class system.options
+---@field name? string
+---@field description? string
+---@field authors? string[]
+---@field version? number[]
 ---@field children? system[]
----@field select? table[]
 ---@field depend? system[]
+---@field select? table[]
+---@field trigger? entity.component.command[]
 ---@field execute? system.executor
 
 ---@param select table[]
@@ -31,16 +42,38 @@ local function calculate_select_key(select)
     return table.concat(t)
 end
 
+---@param triggers entity.component.command[]
+---@return table<entity.component.command, true>?
+local function to_trigger_table(triggers)
+    if triggers == nil then
+        return nil
+    end
+    local t = {}
+    for i = 1, #triggers do
+        t[triggers[i]] = true
+    end
+    return t
+end
+
 system.__index = system
 setmetatable(system, {
     __call = function(_, options)
         local instance = setmetatable({}, system)
-        instance._children = options.children
-        instance._select = options.select
+
+        instance.name = options.name
+        instance.description = options.description
+        instance.authors = options.authors
+        instance.version = options.version
+
+        instance.children = options.children
+        instance.depend = options.depend
+        instance.select = options.select
+        instance.trigger = to_trigger_table(options.trigger)
+        instance.execute = options.execute
+
         instance._select_key = calculate_select_key(options.select)
-        instance._dependencies = options.depend
-        instance._execute = options.execute
         instance._tasks = {}
+
         return instance
     end
 })
@@ -55,7 +88,7 @@ local world_groups_cache = {}
 ---@param select entity.component[]
 ---@return system.group
 local function create_system_group(world, select)
-    local group = world:create_group(function(e)
+    local grp = world:create_group(function(e)
         for i = 1, #select do
             if e[select[i]] == nil then
                 return false
@@ -63,12 +96,12 @@ local function create_system_group(world, select)
         end
         return true
     end)
-    group._system_ref_count = 1
-    return group --[[@as system.group]]
+    grp._system_ref_count = 1
+    return grp --[[@as system.group]]
 end
 
----@param output_tasks scheduler.task_graph_node[]?
----@param systems system[]
+---@param output_tasks scheduler.task_graph_node[]
+---@param systems system[]?
 ---@param world world
 ---@param sched scheduler
 local function add_depended_system_tasks(output_tasks, systems, world, sched)
@@ -78,7 +111,7 @@ local function add_depended_system_tasks(output_tasks, systems, world, sched)
 
     for i = 1, #systems do
         local dep_sys = systems[i]
-        if dep_sys._execute ~= nil then
+        if dep_sys.execute ~= nil then
             local dep_tasks_entry = dep_sys._tasks[sched]
             if dep_tasks_entry == nil then
                 error("failed to register system: dependency check failed #"..i)
@@ -96,7 +129,7 @@ local function add_depended_system_tasks(output_tasks, systems, world, sched)
                 error("failed to register system: dependency check failed #"..i)
             end
         else
-            add_depended_system_tasks(output_tasks, dep_sys._children, world, sched)
+            add_depended_system_tasks(output_tasks, dep_sys.children, world, sched)
         end
     end
 
@@ -126,10 +159,10 @@ end
 ---@param parent_task? scheduler.task_graph_node
 function system:register(world, sched, parent_task)
     local dep_tasks = {parent_task}
-    add_depended_system_tasks(dep_tasks, self._dependencies, world, sched)
+    add_depended_system_tasks(dep_tasks, self.depend, world, sched)
 
-    local children = self._children
-    local execute = self._execute
+    local children = self.children
+    local execute = self.execute
 
     if execute == nil then
         local children_disposers =
@@ -150,59 +183,109 @@ function system:register(world, sched, parent_task)
         tasks[sched] = tasks_entry
     end
 
-    local select = self._select
-    if select == nil then
-        local task = sched:create_task(function()
-            return execute(world, sched)
-        end, dep_tasks)
-        tasks_entry[task] = world
+    local select = self.select
+    local select_key
+    local select_group
+    local groups_cache
 
-        local children_disposers =
-            children and register_children(children, world, sched, task)
+    local trigger = self.trigger
+    local monitor_entities
+    local entity_add_listener
+    local entity_remove_listener
 
-        return task, function()
-            sched:remove_task(task)
+    if select ~= nil then
+        select_key = self._select_key
 
-            tasks_entry[task] = nil
-            if next(tasks_entry) == nil then
-                tasks[sched] = nil
+        if trigger ~= nil then
+            local disp = world.dispatcher
+            select_group = group()
+            monitor_entities = {}
+
+            entity_add_listener = function(_, e)
+                for i = 1, #select do
+                    if e[select[i]] == nil then
+                        return
+                    end
+                end
+                local trigger_listener = function(command)
+                    if trigger[command] then
+                        select_group:add(e)
+                    end
+                end
+                disp:listen_on(e, trigger_listener)
+                monitor_entities[e] = trigger_listener
+                select_group:add(e)
             end
 
-            if children_disposers ~= nil then
-                for i = 1, #children_disposers do
-                    children_disposers[i]()
+            entity_remove_listener = function(_, e)
+                select_group:remove(e)
+                monitor_entities[e] = nil
+            end
+
+            disp:listen("add", entity_add_listener)
+            disp:listen("remove", entity_remove_listener)
+        else
+            groups_cache = world_groups_cache[world]
+            if groups_cache == nil then
+                select_group = create_system_group(world, select)
+                groups_cache = {[select_key] = select_group}
+                world_groups_cache[world] = groups_cache
+            else
+                select_group = groups_cache[select_key]
+                if select_group == nil then
+                    select_group = create_system_group(world, select)
+                    groups_cache[select_key] = select_group
+                else
+                    select_group._system_ref_count = select_group._system_ref_count + 1
                 end
             end
         end
     end
 
-    local select_key = self._select_key
-    local groups_cache = world_groups_cache[world]
-    local group
+    local task_func
+    local dispose
 
-    if groups_cache == nil then
-        group = create_system_group(world, select)
-        groups_cache = {[select_key] = group}
-        world_groups_cache[world] = groups_cache
-    else
-        group = groups_cache[select_key]
-        if group == nil then
-            group = create_system_group(world, select)
-            groups_cache[select_key] = group
+    if select_group ~= nil then
+        if trigger ~= nil then
+            task_func = function()
+                local len = #select_group
+                if len == 0 then return end
+                for i = 1, len do
+                    if execute(world, sched, select_group[i]) then
+                        dispose()
+                        return
+                    end
+                end
+                select_group:clear()
+            end
         else
-            group._system_ref_count = group._system_ref_count + 1
+            task_func = function()
+                for i = 1, #select_group do
+                    if execute(world, sched, select_group[i]) then
+                        dispose()
+                        return
+                    end
+                end
+            end
+        end
+    else
+        task_func = function()
+            if execute(world, sched) then
+                dispose()
+            end
         end
     end
 
-    local task = sched:create_task(function()
-        return execute(world, sched, group)
-    end, dep_tasks)
+    local task = sched:create_task(task_func, dep_tasks)
     tasks_entry[task] = world
 
     local children_disposers =
         children and register_children(children, world, sched, task)
 
-    return task, function()
+    dispose = function()
+        if task.status == "removed" then
+            error("system has been disposed")
+        end
         sched:remove_task(task)
 
         tasks_entry[task] = nil
@@ -210,16 +293,28 @@ function system:register(world, sched, parent_task)
             tasks[sched] = nil
         end
 
-        local group_ref_count = group._system_ref_count
-        if group_ref_count == 0 then
-            world:remove_group(group)
-            groups_cache[select_key] = nil
+        if select_group ~= nil then
+            if trigger ~= nil then
+                local disp = world.dispatcher
+                disp:unlisten("add", entity_add_listener)
+                disp:unlisten("remove", entity_remove_listener)
 
-            if next(groups_cache) == nil then
-                world_groups_cache[world] = nil
+                for e, trigger_listener in pairs(monitor_entities) do
+                    disp:unlisten_on(e, trigger_listener)
+                end
+            else
+                local group_ref_count = select_group._system_ref_count
+                if group_ref_count == 0 then
+                    world:remove_group(select_group --[[@as system.group]])
+                    groups_cache[select_key] = nil
+
+                    if next(groups_cache) == nil then
+                        world_groups_cache[world] = nil
+                    end
+                else
+                    select_group._system_ref_count = select_group._system_ref_count - 1
+                end
             end
-        else
-            group._system_ref_count = group._system_ref_count - 1
         end
 
         if children_disposers ~= nil then
@@ -228,6 +323,8 @@ function system:register(world, sched, parent_task)
             end
         end
     end
+
+    return task, dispose
 end
 
 return system

@@ -1,6 +1,5 @@
 local entity = require("entity")
 
----Container of `entity`
 ---@class group
 ---@field package _indices table<entity, integer>
 ---@field [integer] entity

@@ -1,4 +1,3 @@
----Container of `entity.component`
 ---@class entity
 ---@operator call(entity.component[]): entity
 local entity = {}
@@ -19,7 +18,6 @@ setmetatable(entity, {
     end
 })
 
----Pure data stored in `entity`
 ---@class entity.component
 ---@field package _initializer fun(...): table
 ---@field [string] any
