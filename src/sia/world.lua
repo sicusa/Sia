@@ -152,11 +152,11 @@ function world:refresh(entity)
 
         if pred == nil then
             for j = 1, #self do
-                g:add(self[i])
+                g:add(self[j])
             end
         else
             for j = 1, #self do
-                local e = self[i]
+                local e = self[j]
                 if pred(e) then
                     g:add(e)
                 else
