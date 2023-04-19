@@ -18,6 +18,10 @@ setmetatable(entity, {
     end
 })
 
+function entity:add_state(component)
+    self[getmetatable(component)] = component
+end
+
 ---@class entity.component
 ---@field package _initializer fun(...): table
 ---@field [string] any
