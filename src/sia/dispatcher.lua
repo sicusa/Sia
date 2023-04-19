@@ -1,6 +1,6 @@
 ---@class dispatcher
 ---@field package _cmd_listeners table<any, dispatcher.command_handler[]>
----@field package _sender_listener table<any, dispatcher.command_handler[]>
+---@field package _sender_listeners table<any, dispatcher.command_handler[]>
 ---@field package _sending boolean
 ---@field package _listeners_to_remove table<dispatcher.command_handler>
 ---@operator call(): dispatcher
@@ -13,7 +13,7 @@ setmetatable(dispatcher, {
     __call = function()
         local instance = setmetatable({}, dispatcher)
         instance._cmd_listeners = {}
-        instance._sender_listener = {}
+        instance._sender_listeners = {}
         instance._sending = false
         return instance
     end
@@ -86,7 +86,7 @@ end
 ---@param sender any
 ---@param handler dispatcher.command_handler
 function dispatcher:listen_on(sender, handler)
-    raw_listen(self._sender_listener, sender, handler)
+    raw_listen(self._sender_listeners, sender, handler)
 end
 
 ---@param sender any
@@ -96,12 +96,12 @@ function dispatcher:unlisten_on(sender, handler)
     if self._sending then
         error("cannot unlisten sender while sending")
     end
-    return raw_unlisten(self._sender_listener, sender, handler)
+    return raw_unlisten(self._sender_listeners, sender, handler)
 end
 
 ---@param sender any
 function dispatcher:clear_listeners_on(sender)
-    self._sender_listener[sender] = nil
+    self._sender_listeners[sender] = nil
 end
 
 ---@param listeners dispatcher.command_handler[]
@@ -131,7 +131,7 @@ function dispatcher:send(command, sender, ...)
         execute_listeners(ls, command, sender, ...)
     end
 
-    ls = self._sender_listener[sender]
+    ls = self._sender_listeners[sender]
     if ls ~= nil then
         execute_listeners(ls, command, sender, ...)
     end
