@@ -264,21 +264,28 @@ function system:register(world, sched, parent_task)
             task_func = function()
                 local len = #select_group
                 if len == 0 then return end
-                for i = 1, len do
+
+                local i = 1
+                while i <= len do
                     if execute(world, sched, select_group[i]) then
                         dispose()
                         return
                     end
+                    i = i + 1
+                    len = #select_group
                 end
+
                 select_group:clear()
             end
         else
             task_func = function()
-                for i = 1, #select_group do
+                local i = 1
+                while i <= #select_group do
                     if execute(world, sched, select_group[i]) then
                         dispose()
                         return
                     end
+                    i = i + 1
                 end
             end
         end
