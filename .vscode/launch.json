@@ -8,7 +8,7 @@
             "type": "lua",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/examples/mygame.lua",
+            "program": "${relativeFile}",
             "path": "${workspaceFolder}/src/?.lua;${workspaceFolder}/examples/?.lua",
             "stopOnEntry": false
         }
