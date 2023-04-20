@@ -161,3 +161,5 @@ mygame:update(0.5) -- player dead
 dispose_health_systems()
 dispose_gameplay_systems()
 ```
+
+For more complex example, see [ecosystem.lua](examples/ecosystem.lua).

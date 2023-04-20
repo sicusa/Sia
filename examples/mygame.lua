@@ -21,25 +21,17 @@ end
 local transform = entity.component(function(props)
     return {
         position = props.position or {0, 0},
-        rotation = props.rotation or 0,
-        scale = props.scale or {1, 1}
+        rotation = props.rotation or 0
     }
 end)
-
-transform:on("set_position", function(self, value)
-    local p = self.position
-    p[1] = value[1]
-    p[2] = value[2]
+:on("set_position", function(self, value)
+    self.position = {value[1], value[2]}
 end)
-
-transform:on("set_rotation", function(self, value)
+:on("set_rotation", function(self, value)
     self.rotation = value
 end)
-
-transform:on("set_scale", function(self, value)
-    local s = self.scale
-    s[1] = value[1]
-    s[2] = value[2]
+:on("set_scale", function(self, value)
+    self.scale = {value[1], value[2]}
 end)
 
 local health = entity.component(function(value)
@@ -48,12 +40,10 @@ local health = entity.component(function(value)
         debuff = 0
     }
 end)
-
-health:on("damage", function(self, damage)
+:on("damage", function(self, damage)
     self.value = self.value - damage
 end)
-
-health:on("set_debuff", function(self, value)
+:on("set_debuff", function(self, value)
     self.debuff = value
 end)
 
