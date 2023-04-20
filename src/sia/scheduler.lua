@@ -53,8 +53,6 @@ function scheduler:create_task(callback, dependencies)
         task_seq[index] = node
         task_nodes[node] = index
     else
-        task_nodes[node] = true
-
         local depended_nodes = {}
         for i, depended_node in ipairs(dependencies) do
             if task_nodes[depended_node] == nil then
@@ -69,6 +67,7 @@ function scheduler:create_task(callback, dependencies)
             dep_nodes[node] = true
         end
         node.depended_nodes = depended_nodes
+        task_nodes[node] = true
         self._depended_task_seq_dirty = true
     end
 
