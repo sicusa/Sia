@@ -3,6 +3,8 @@ local world = require("sia.world")
 local system = require("sia.system")
 local scheduler = require("sia.scheduler")
 
+math.randomseed(os.clock())
+
 ---@class ecosystem: world
 ---@field delta_time number
 ---@field time number
@@ -58,19 +60,19 @@ local constraint = entity.component(function(props)
     return {
         source = assert(props.source),
         target = assert(props.target),
-        position = props.position,
-        rotation = props.rotation
+        position_offset = props.position_offset,
+        rotation_offset = props.rotation_offset
     }
 end)
-:on("set_position", function(self, value)
+:on("set_position_offset", function(self, value)
     if value == nil then
-        self.position = nil
+        self.position_offset = nil
     else
-        self.position = {value[1], value[2]}
+        self.position_offset = {value[1], value[2]}
     end
 end)
-:on("set_rotation", function(self, value)
-    self.rotation = value
+:on("set_rotation_offset", function(self, value)
+    self.rotation_offset = value
 end)
 
 local timer = entity.component(function(initial_value)
@@ -82,8 +84,13 @@ end)
     self.value = value
 end)
 
-local map = entity.component(function()
-    return {}
+local map = entity.component(function(props)
+    if props == nil then
+        return {}
+    end
+    return {
+        bound_predicate = props.bound_predicate
+    }
 end)
 :on("set_object", function(self, pos, object)
     table2d.put(self, pos[1], pos[2], object)
@@ -158,13 +165,13 @@ local constraint_initialize_system = system {
             end
 
             if command == transform.set_position then
-                local offset = c.position
+                local offset = c.position_offset
                 if offset ~= nil then
                     world:modify(target, transform.set_position,
                         {value[1] + offset[1], value[2] + offset[2]})
                 end
             elseif command == transform.set_rotation then
-                local offset = c.rotation
+                local offset = c.rotation_offset
                 if offset ~= nil then
                     world:modify(target, transform.set_rotation, value + offset)
                 end
@@ -174,12 +181,12 @@ local constraint_initialize_system = system {
         local src_trans = source[transform]
         if src_trans ~= nil then
             if c.position then
-                local pos = src_trans.position
+                local pos = src_trans.position_offset
                 world:modify(target, transform.set_position,
                     {pos[1] + c.position[1], pos[2] + c.position[2]})
             elseif c.rotation then
                 world:modify(target, transform.set_rotation,
-                    src_trans.rotation + c.rotation)
+                    src_trans.rotation + c.rotation_offset)
             end
         end
 
@@ -218,7 +225,7 @@ local in_map_state = entity.component(function(props)
     }
 end)
 
-local in_map_object_initialize_system = system {
+local map_object_initialize_system = system {
     select = {in_map, transform},
     trigger = {"add"},
     
@@ -231,6 +238,13 @@ local in_map_object_initialize_system = system {
 
         if table2d.get(m_comp, p[1], p[2]) ~= nil then
             print("error: map position has been occupied by another object")
+            world:remove(e)
+            return
+        end
+
+        if m_comp.bound_predicate ~= nil and m_comp:bound_predicate(p) then
+            print("error: map position is bound")
+            world:remove(e)
             return
         end
 
@@ -241,23 +255,37 @@ local in_map_object_initialize_system = system {
     end
 }
 
+local map_object_uninitialize_system = system {
+    select = {in_map, transform},
+    trigger = {"remove"},
+    
+    execute = function(world, sched, e)
+        local m = e[in_map].entity
+        world:modify(m, map.set_object, e[transform].position, nil)
+    end
+}
+
 local map_object_move_system = system {
     select = {in_map, transform},
     trigger = {transform.set_position},
-    depend = {in_map_object_initialize_system},
+    depend = {map_object_initialize_system},
 
     execute = function(world, sched, e)
+        local s = e[in_map_state]
+        if s == nil then return end 
+
         local m = e[in_map].entity
         local m_comp = m[map]
 
-        local s = e[in_map_state]
         local t = e[transform]
         local p = t.position
 
-        if table2d.get(m_comp, p[1], p[2]) ~= nil then
+        if table2d.get(m_comp, p[1], p[2]) ~= nil or
+                m_comp.bound_predicate ~= nil and m_comp:bound_predicate(p) then
             world:modify(e, transform.set_position, s.prev_pos)
             return
         end
+
         if table2d.get(m_comp, s.prev_pos[1], s.prev_pos[2]) == e then
             world:modify(m, map.set_object, s.prev_pos, nil)
         end
@@ -269,7 +297,8 @@ local map_object_move_system = system {
 local map_systems = system {
     depend = {transform_systems},
     children = {
-        in_map_object_initialize_system,
+        map_object_initialize_system,
+        map_object_uninitialize_system,
         map_object_move_system
     }
 }
@@ -313,6 +342,7 @@ local creature_repletion_decline_system = system {
     execute = function(world, sched, e)
         local c = e[creature]
         if c.dead then return end
+
         world:modify(e, creature.set_repletion,
             c.repletion - c.hunger_rate * world.delta_time)
     end
@@ -325,6 +355,7 @@ local creature_repleation_check_system = system {
     execute = function(world, sched, e)
         local c = e[creature]
         if c.dead then return end
+
         if c.repletion <= 0 then
             world:modify(e, creature.kill)
         end
@@ -338,6 +369,7 @@ local creature_health_check_system = system {
     execute = function(world, sched, e)
         local c = e[creature]
         if c.dead then return end
+
         if c.health <= 0 then
             world:modify(e, creature.kill)
         end
@@ -349,6 +381,8 @@ local creature_action_trigger_system = system {
 
     execute = function(world, sched, e)
         local c = e[creature]
+        if c.dead then return end
+
         local actions = e[creature_state].active_actions
         local rules = c.action_rules
 
@@ -365,6 +399,9 @@ local creature_active_actions_execute_system = system {
     select = {creature},
     
     execute = function(world, sched, e)
+        local c = e[creature]
+        if c.dead then return end
+
         local actions = e[creature_state].active_actions
         for type, execute in pairs(actions) do
             if execute(e, world, sched) then
@@ -562,3 +599,143 @@ ecosystem:modify(e1, transform.set_position, {3, 3})
 ecosystem:update(0.1)
 print(table2d.get(m[map], 2, 4) == e1)
 print(table2d.get(m[map], 3, 3) == e2)
+
+print()
+print("== start ecosystem ==")
+
+local MAX_W = 100
+local MAX_H = 25
+
+local m_ent = entity {
+    map {
+        bound_predicate = function(self, p)
+            return p[1] < 0 or p[2] < 0 or p[1] > MAX_W or p[2] > MAX_H
+        end
+    }
+}
+local m = m_ent[map]
+ecosystem:add(m_ent)
+
+local test_creature_state = entity.component(function(props)
+    return {
+        move_last_time = 0,
+        move_timer = 0,
+        move_duration = props.move_duration,
+        move_direction = props.move_direction
+    }
+end)
+
+local function create_creature(map, position, mass, gene)
+    return entity {
+        in_map(map),
+        transform {
+            position = position
+        },
+        test_creature_state {
+            move_duration = gene.move_minimum_duration + math.random() * gene.move_maximum_duration,
+            move_direction = math.random(4)
+        },
+        creature {
+            mass = mass,
+            species = gene.species,
+            sex = gene.sexes[math.random(#gene.sexes)],
+            hunger_rate = gene.hunger_rate,
+            action_rules = {
+                {
+                    type = "move",
+                    predicate = function(e, world)
+                        local s = e[test_creature_state]
+                        return world.time - s.move_last_time > s.move_duration
+                    end,
+                    execute = function(e, world)
+                        local s = e[test_creature_state]
+                        if s.move_timer > s.move_duration then
+                            s.move_last_time = world.time
+                            s.move_timer = 0
+                            s.move_duration = gene.move_minimum_duration + math.random() * gene.move_maximum_duration
+                            s.move_direction = math.random(4)
+                            return true
+                        end
+                        s.move_timer = s.move_timer + world.delta_time
+
+                        local p = {unpack(e[transform].position)}
+                        if s.move_direction == 1 then
+                            p[1] = p[1] + 1
+                        elseif s.move_direction == 2 then
+                            p[1] = p[1] - 1
+                        elseif s.move_direction == 3 then
+                            p[2] = p[2] + 1
+                        else
+                            p[2] = p[2] - 1
+                        end
+                        world:modify(e, transform.set_position, p)
+                    end
+                }
+            }
+        }
+    }
+end
+
+local charset = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
+
+local function random_string(length)
+	local ret = {}
+	local r
+	for i = 1, length do
+		r = math.random(1, #charset)
+		table.insert(ret, charset:sub(r, r))
+	end
+	return table.concat(ret)
+end
+
+for i = 1, 10 do
+    local sexes = {}
+    for j = 1, math.random(5) do
+        sexes[j] = random_string(5)
+    end
+
+    local move_minimum_duration = 0.1 + math.random() * 1
+    local gene = {
+        index = i,
+        species = random_string(10),
+        sexes = sexes,
+        hunger_rate = 0.001 + math.random() * 0.03,
+        move_minimum_duration = move_minimum_duration,
+        move_maximum_duration = move_minimum_duration + math.random() * 0.5
+    }
+
+    for j = 1, math.random(20) do
+        local p = {math.random(0, MAX_W), math.random(0, MAX_H)}
+        local e = create_creature(m_ent, p, 0.5 + math.random() * 5, gene)
+        e.gene = gene
+        ecosystem:add(e)
+    end
+end
+
+local function print_map(m)
+    local t = {}
+    for i = 0, MAX_H do
+        for j = 0, MAX_W do
+            local e = table2d.get(m, j, i)
+            if e == nil then
+                t[#t+1] = " "
+            elseif e[creature].dead then
+                t[#t+1] = "^"
+            else
+                t[#t+1] = "*"
+            end
+        end
+        t[#t+1] = '\n'
+    end
+    print(table.concat(t))
+end
+
+print("Press any text to start simulation...")
+local _ = io.read()
+
+for i = 1, 1000000 do
+    ecosystem:update(0.1)
+    os.execute("clear")
+    print_map(m)
+    os.execute("sleep 0.1")
+end
