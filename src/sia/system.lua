@@ -192,7 +192,6 @@ function system:register(world, sched, parent_task)
     local trigger = self.trigger
     local monitor_entities
     local entity_add_listener
-    local entity_remove_listener
 
     if select ~= nil then
         select_key = self._select_key
@@ -215,6 +214,13 @@ function system:register(world, sched, parent_task)
                 local trigger_listener = function(command)
                     if trigger[command] then
                         select_group:add(e)
+                    elseif command == "remove" then
+                        monitor_entities[e] = nil
+                        if has_remove_trigger then
+                            select_group:add(e)
+                        else
+                            select_group:remove(e)
+                        end
                     end
                 end
 
@@ -226,18 +232,7 @@ function system:register(world, sched, parent_task)
                 end
             end
 
-            entity_remove_listener = function(_, e)
-                monitor_entities[e] = nil
-
-                if has_remove_trigger then
-                    select_group:add(e)
-                else
-                    select_group:remove(e)
-                end
-            end
-
             disp:listen("add", entity_add_listener)
-            disp:listen("remove", entity_remove_listener)
         else
             groups_cache = world_groups_cache[world]
             if groups_cache == nil then
@@ -318,7 +313,6 @@ function system:register(world, sched, parent_task)
             if trigger ~= nil then
                 local disp = world.dispatcher
                 disp:unlisten("add", entity_add_listener)
-                disp:unlisten("remove", entity_remove_listener)
 
                 for e, trigger_listener in pairs(monitor_entities) do
                     disp:unlisten_on(e, trigger_listener)
