@@ -1,8 +1,8 @@
 package = "sia"
-version = "dev-1"
+version = "dev-2"
 source = {
    url = "git+https://github.com/sicusa/Sia",
-   tag = "dev-1"
+   tag = "dev-2"
 }
 description = {
    summary = "Elegant ECS framework",
