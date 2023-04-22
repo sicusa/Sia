@@ -170,7 +170,7 @@ end
 ---@param entity entity
 ---@param command entity.component.command
 function world:modify(entity, command, ...)
-    local comp = entity[command.component]
+    local comp = entity[command.component_key]
     if comp == nil then
         error("cannot modify entity: component not found")
     end

@@ -10,7 +10,10 @@ setmetatable(entity, {
             local comp = components[i]
             local mt = getmetatable(comp)
             if type(mt) ~= "table" then
-                error("entity component must have metatable #"..i)
+                mt = comp.__sia_component_key
+                if mt == nil then
+                    error("entity component must have metatable or __sia_component_key #"..i)
+                end
             end
             instance[mt] = comp
         end
@@ -40,19 +43,26 @@ setmetatable(component, {
 })
 
 ---@class entity.component.command
----@field component entity.component
----@operator call(...): any
+---@field component_key entity.component
+---@operator call(...): entity.component.command
 local command = {
-    __call = function(self, component, ...)
-        self[1](component, ...)
+    __call = function(self, component_key, ...)
+        self[1](component_key, ...)
     end
 }
+entity.command = command
+
+setmetatable(command, {
+    __call = function(_, component_key, handler)
+        return setmetatable({handler, component_key = component_key}, command)
+    end
+})
 
 ---@param command_name string
 ---@param handler fun(component: entity.component, ...) | nil
 ---@return entity.component
 function component:on(command_name, handler)
-    self[command_name] = setmetatable({handler, component = self}, command)
+    self[command_name] = command(self, handler)
     return self
 end
 
