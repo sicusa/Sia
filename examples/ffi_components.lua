@@ -44,6 +44,8 @@ local function create_ffi_component(ctype, commands)
     return comp_type
 end
 
+---@class position : ffi.ctype*
+---@field set fun(x: number, y: number)
 local position = create_ffi_component("position_t", {
     set = function(self, x, y)
         self.x = x
@@ -51,6 +53,8 @@ local position = create_ffi_component("position_t", {
     end
 })
 
+---@class speed : ffi.ctype*
+---@field set fun(x: number, y: number)
 local speed = create_ffi_component("speed_t", {
     set = function(self, x, y)
         self.x = x
