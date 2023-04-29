@@ -5,7 +5,7 @@ Sia is an elegant ECS framework for Lua.
 ## Install
 
 ```
-$ luarocks install --server=https://luarocks.org/dev sia
+$ luarocks install sia
 ```
 
 ## Example
