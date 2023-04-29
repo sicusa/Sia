@@ -81,6 +81,24 @@ function group:foreach(handler)
     end
 end
 
+---@param predicate fun(entity: entity, group?: group, index?: integer): any
+---@return entity[]
+function group:filter(predicate)
+    local res = {}
+    for i = 1, #self do
+        local e = self[i]
+        if predicate(e) then
+            res[#res+1] = e
+        end
+    end
+    return res
+end
+
+---@return entity[]
+function group:to_array()
+    return {unpack(self)}
+end
+
 function group:clear()
     local indices = self._indices
     for i = 1, #self do
