@@ -3,6 +3,8 @@ local world = require("sia.world")
 local system = require("sia.system")
 local scheduler = require("sia.scheduler")
 
+local unpack = unpack or table.unpack
+
 math.randomseed(os.clock())
 
 ---@class ecosystem: world

@@ -1,5 +1,7 @@
 local entity = require("sia.entity")
 
+local unpack = unpack or table.unpack
+
 ---@class group
 ---@field package _indices table<entity, integer>
 ---@field [integer] entity
