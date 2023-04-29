@@ -1,5 +1,3 @@
-local entity = require("sia.entity")
-
 local unpack = unpack or table.unpack
 
 ---@class group
