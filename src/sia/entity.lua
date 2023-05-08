@@ -8,14 +8,19 @@ setmetatable(entity, {
         local instance = setmetatable({}, entity)
         for i = 1, #components do
             local comp = components[i]
-            local mt = getmetatable(comp)
-            if type(mt) ~= "table" then
-                mt = comp.__sia_component_key
-                if mt == nil then
-                    error("entity component must have metatable or __sia_component_key #"..i)
+            local meta = comp.__sia_component_meta
+            if meta ~= nil then
+                instance[meta.key] = comp
+
+                local iter_subcomps = meta.iter_subcomponents
+                if iter_subcomps then
+                    for subcomp_key, subcomp in iter_subcomps(comp) do
+                        instance[subcomp_key] = subcomp
+                    end
                 end
+            else
+                instance[getmetatable(comp)] = comp
             end
-            instance[mt] = comp
         end
         return instance
     end

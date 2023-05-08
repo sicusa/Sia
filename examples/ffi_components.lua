@@ -2,6 +2,7 @@ local entity = require("sia.entity")
 local world = require("sia.world")
 local system = require("sia.system")
 local scheduler = require("sia.scheduler")
+local ffic = require("sia.ffic")
 
 local ffi = require("ffi")
 
@@ -21,32 +22,17 @@ function ffi_world:update(delta_time)
 end
 
 ffi.cdef[[
-    typedef struct {
+    struct position {
         float x, y;
-    } position_t;
-
-    typedef struct {
+    };
+    struct speed {
         float x, y;
-    } speed_t;
+    };
 ]]
-
-local function create_ffi_component(ctype, commands)
-    local mt = {}
-    local comp_type = ffi.metatype(ctype, mt)
-    mt.__index = {
-        __sia_component_key = comp_type
-    }
-    if commands ~= nil then
-        for command_name, handler in pairs(commands) do
-            mt.__index[command_name] = entity.command(comp_type, handler)
-        end
-    end
-    return comp_type
-end
 
 ---@class position : ffi.ctype*
 ---@field set fun(x: number, y: number)
-local position = create_ffi_component("position_t", {
+local position = ffic.struct("position", {
     set = function(self, x, y)
         self.x = x
         self.y = y
@@ -55,7 +41,7 @@ local position = create_ffi_component("position_t", {
 
 ---@class speed : ffi.ctype*
 ---@field set fun(x: number, y: number)
-local speed = create_ffi_component("speed_t", {
+local speed = ffic.struct("speed", {
     set = function(self, x, y)
         self.x = x
         self.y = y
@@ -90,6 +76,15 @@ local e = entity {
     speed(2, 2)
 }
 ffi_world:add(e)
+
+local e2_polymer = ffic.polymer(position, speed)
+local e2 = entity {
+    e2_polymer {
+        position(1, 2),
+        speed(2, 2)
+    }
+}
+ffi_world:add(e2)
 
 ffi_world:update(0.1)
 ffi_world:update(0.1)
