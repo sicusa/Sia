@@ -2,7 +2,6 @@ local ffi = require("ffi")
 local entity = require("sia.entity")
 
 local concat = table.concat
-
 local entity_command = entity.command
 
 local ffic = {}
@@ -38,6 +37,7 @@ local polymer_count = 0
 
 ---@param ctype string
 ---@param subcomp_ctypes string[]
+---@return string
 local function generate_polymer_struct_def(ctype, subcomp_ctypes)
     local t = {"typedef struct ", ctype, "{"}
 
@@ -56,6 +56,10 @@ local function generate_polymer_struct_def(ctype, subcomp_ctypes)
     return concat(t)
 end
 
+---@param state any
+---@param key string | nil
+---@return string | nil
+---@return ffi.ctype* | nil
 local function iter_polymer_subcomps(state, key)
     local i = state[1]
     local subcomp_ctypes = state[2]
@@ -75,8 +79,8 @@ end
 ---@return ffi.ctype*
 ffic.polymer = function(...)
     local subcomp_types = {...}
-    if #subcomp_types == nil then
-        error("subcomp_types table cannot be empty")
+    if #subcomp_types == 0 then
+        error("ffi component types required")
     end
 
     local subcomp_ctypes = {}
