@@ -7,7 +7,7 @@ local entity_command = entity.command
 local ffic = {}
 
 ---@param ctype string
----@param commands table<string, function>
+---@param commands? table<string, function>
 ---@return ffi.ctype*
 ffic.struct = function(ctype, commands)
     local mt = {}
