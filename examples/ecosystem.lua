@@ -182,13 +182,16 @@ local constraint_initialize_system = system {
 
         local src_trans = source[transform]
         if src_trans ~= nil then
-            if c.position then
-                local pos = src_trans.position_offset
+            local poff = c.position_offset
+            local roff = c.rotation_offset
+            if poff then
+                local pos = src_trans.position
                 world:modify(target, transform.set_position,
-                    {pos[1] + c.position[1], pos[2] + c.position[2]})
-            elseif c.rotation then
+                    {pos[1] + poff[1], pos[2] + poff[2]})
+            end
+            if roff then
                 world:modify(target, transform.set_rotation,
-                    src_trans.rotation + c.rotation_offset)
+                    src_trans.rotation + roff)
             end
         end
 
@@ -457,7 +460,7 @@ local c = entity {
     constraint {
         source = e1,
         target = e2,
-        position = {5, 5}
+        position_offset = {5, 5}
     }
 }
 
