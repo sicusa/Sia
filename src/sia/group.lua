@@ -1,9 +1,9 @@
 local unpack = unpack or table.unpack
 
----@class group
----@field package _indices table<entity, integer>
----@field [integer] entity
----@operator call(entity[]?): group
+---@class sia.group
+---@field package _indices table<sia.entity, integer>
+---@field [integer] sia.entity
+---@operator call(sia.entity[]?): sia.group
 local group = {}
 
 group.__index = group
@@ -25,7 +25,7 @@ setmetatable(group, {
     end
 })
 
----@param entity entity
+---@param entity sia.entity
 ---@return boolean
 function group:add(entity)
     local indices = self._indices
@@ -42,7 +42,7 @@ function group:add(entity)
     return true
 end
 
----@param entity entity
+---@param entity sia.entity
 ---@return boolean
 function group:remove(entity)
     local indices = self._indices
@@ -68,21 +68,21 @@ function group:remove(entity)
     return true
 end
 
----@param entity entity
+---@param entity sia.entity
 ---@return boolean
 function group:contains(entity)
     return self._indices[entity] ~= nil
 end
 
----@param handler fun(entity: entity, group?: group, index?: integer)
+---@param handler fun(entity: sia.entity, group?: sia.group, index?: integer)
 function group:foreach(handler)
     for i = 1, #self do
         handler(self[i], self, i)
     end
 end
 
----@param predicate fun(entity: entity, group?: group, index?: integer): any
----@return entity[]
+---@param predicate fun(entity: sia.entity, group?: sia.group, index?: integer): any
+---@return sia.entity[]
 function group:filter(predicate)
     local res = {}
     for i = 1, #self do
@@ -94,7 +94,7 @@ function group:filter(predicate)
     return res
 end
 
----@return entity[]
+---@return sia.entity[]
 function group:to_array()
     return {unpack(self)}
 end

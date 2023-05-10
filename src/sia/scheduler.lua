@@ -1,25 +1,25 @@
----@class scheduler
+---@class sia.scheduler
 ---@field package _task_count integer
----@field package _orphan_task_seq scheduler.task_graph_node[]
----@field package _depended_task_seq scheduler.task_graph_node[]
+---@field package _orphan_task_seq sia.scheduler.task_graph_node[]
+---@field package _depended_task_seq sia.scheduler.task_graph_node[]
 ---@field package _depended_task_seq_dirty boolean
----@field package _task_graph_nodes table<scheduler.task_graph_node, boolean | integer>
----@field package _tasks_to_remove scheduler.task_graph_node[]
+---@field package _task_graph_nodes table<sia.scheduler.task_graph_node, boolean | integer>
+---@field package _tasks_to_remove sia.scheduler.task_graph_node[]
 ---@field package _ticking boolean
----@operator call:scheduler
+---@operator call:sia.scheduler
 local scheduler = {}
 
----@alias scheduler.callback fun(): any | nil
----@alias scheduler.task_graph_node.status
+---@alias sia.scheduler.callback fun(): any | nil
+---@alias sia.scheduler.task_graph_node.status
 ---| "added"
 ---| "adding"
 ---| "removed"
 
----@class scheduler.task_graph_node
----@field callback scheduler.callback
----@field depended_nodes? table<scheduler.task_graph_node, true>
----@field depending_nodes? table<scheduler.task_graph_node, true>
----@field status? scheduler.task_graph_node.status
+---@class sia.scheduler.task_graph_node
+---@field callback sia.scheduler.callback
+---@field depended_nodes? table<sia.scheduler.task_graph_node, true>
+---@field depending_nodes? table<sia.scheduler.task_graph_node, true>
+---@field status? sia.scheduler.task_graph_node.status
 
 scheduler.__index = scheduler
 setmetatable(scheduler, {
@@ -36,11 +36,11 @@ setmetatable(scheduler, {
     end
 })
 
----@param callback scheduler.callback
----@param dependencies? scheduler.task_graph_node[]
----@return scheduler.task_graph_node
+---@param callback sia.scheduler.callback
+---@param dependencies? sia.scheduler.task_graph_node[]
+---@return sia.scheduler.task_graph_node
 function scheduler:create_task(callback, dependencies)
-    ---@type scheduler.task_graph_node
+    ---@type sia.scheduler.task_graph_node
     local node = {
         callback = callback
     }
@@ -75,10 +75,10 @@ function scheduler:create_task(callback, dependencies)
     return node
 end
 
----@param self scheduler
----@param task_nodes table<scheduler.task_graph_node, boolean | integer>
+---@param self sia.scheduler
+---@param task_nodes table<sia.scheduler.task_graph_node, boolean | integer>
 ---@param value boolean | integer
----@param node scheduler.task_graph_node
+---@param node sia.scheduler.task_graph_node
 local function raw_remove_task(self, task_nodes, value, node)
     if type(value) == "number" then
         -- orphan task
@@ -111,7 +111,7 @@ local function raw_remove_task(self, task_nodes, value, node)
     end
 end
 
----@param node scheduler.task_graph_node
+---@param node sia.scheduler.task_graph_node
 function scheduler:remove_task(node)
     local task_nodes = self._task_graph_nodes
     local value = task_nodes[node]
@@ -138,9 +138,9 @@ function scheduler:get_task_count()
     return self._task_count
 end
 
----@param task_seq scheduler.task_graph_node[]
+---@param task_seq sia.scheduler.task_graph_node[]
 ---@param offset integer
----@param node scheduler.task_graph_node
+---@param node sia.scheduler.task_graph_node
 ---@return integer
 local function add_depended_tasks(task_seq, offset, node)
     local status = node.status

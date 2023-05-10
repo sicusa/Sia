@@ -6,10 +6,10 @@ local ffic = require("sia.ffic")
 
 local ffi = require("ffi")
 
----@class ffi_world: world
+---@class ffi_world: sia.world
 ---@field delta_time number
 ---@field time number
----@field scheduler scheduler
+---@field scheduler sia.scheduler
 local ffi_world = world()
 ffi_world.delta_time = 0
 ffi_world.time = 0

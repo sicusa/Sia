@@ -3,10 +3,10 @@ local world = require("sia.world")
 local system = require("sia.system")
 local scheduler = require("sia.scheduler")
 
----@class mygame: world
+---@class mygame: sia.world
 ---@field delta_time number
 ---@field time number
----@field scheduler scheduler
+---@field scheduler sia.scheduler
 local mygame = world()
 mygame.delta_time = 0
 mygame.time = 0

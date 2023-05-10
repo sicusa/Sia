@@ -1,33 +1,33 @@
 local group = require("sia.group")
 
----@class system
+---@class sia.system
 ---@field name? string
 ---@field description? string
 ---@field authors? string[]
 ---@field version? number[]
----@field children? system[]
----@field depend? system[]
+---@field children? sia.system[]
+---@field depend? sia.system[]
 ---@field select? table[]
----@field trigger? table<system.triggerable_command, true>
----@field execute? system.executor
+---@field trigger? table<sia.system.triggerable_command, true>
+---@field execute? sia.system.executor
 ---@field package _select_key string
----@field package _tasks table<scheduler, table<scheduler.task_graph_node, world>>
----@operator call(system.options): system
+---@field package _tasks table<sia.scheduler, table<sia.scheduler.task_graph_node, sia.world>>
+---@operator call(system.options): sia.system
 local system = {}
 
----@alias system.executor fun(world?: world, sched?: scheduler, entity?: entity): any
----@alias system.triggerable_command entity.component.command | "add" | "remove"
+---@alias sia.system.executor fun(world?: sia.world, sched?: sia.scheduler, entity?: sia.entity): any
+---@alias sia.system.triggerable_command sia.entity.component.command | "add" | "remove"
 
 ---@class system.options
 ---@field name? string
 ---@field description? string
 ---@field authors? string[]
 ---@field version? number[]
----@field children? system[]
----@field depend? system[]
+---@field children? sia.system[]
+---@field depend? sia.system[]
 ---@field select? table[]
----@field trigger? system.triggerable_command[]
----@field execute? system.executor
+---@field trigger? sia.system.triggerable_command[]
+---@field execute? sia.system.executor
 
 ---@param select table[]
 ---@return string
@@ -43,8 +43,8 @@ local function calculate_select_key(select)
     return table.concat(t)
 end
 
----@param triggers entity.component.command[]
----@return table<entity.component.command, true>?
+---@param triggers sia.entity.component.command[]
+---@return table<sia.entity.component.command, true>?
 local function to_trigger_table(triggers)
     if triggers == nil then
         return nil
@@ -79,14 +79,14 @@ setmetatable(system, {
     end
 })
 
----@class system.group: world.group
+---@class system.group: sia.world.group
 ---@field package _system_ref_count number
 
----@type table<world, table<string, system.group>>
+---@type table<sia.world, table<string, system.group>>
 local world_groups_cache = {}
 
----@param world world
----@param select entity.component[]
+---@param world sia.world
+---@param select sia.entity.component[]
 ---@return system.group
 local function create_system_group(world, select)
     local grp = world:create_group(function(e)
@@ -101,10 +101,10 @@ local function create_system_group(world, select)
     return grp --[[@as system.group]]
 end
 
----@param output_tasks scheduler.task_graph_node[]
----@param systems system[]?
----@param world world
----@param sched scheduler
+---@param output_tasks sia.scheduler.task_graph_node[]
+---@param systems sia.system[]?
+---@param world sia.world
+---@param sched sia.scheduler
 local function add_depended_system_tasks(output_tasks, systems, world, sched)
     if systems == nil then
         return
@@ -137,11 +137,11 @@ local function add_depended_system_tasks(output_tasks, systems, world, sched)
     return output_tasks
 end
 
----@param children system[]
----@param world world
----@param sched scheduler
----@param parent_task? scheduler.task_graph_node
----@return scheduler.task_graph_node[]?
+---@param children sia.system[]
+---@param world sia.world
+---@param sched sia.scheduler
+---@param parent_task? sia.scheduler.task_graph_node
+---@return sia.scheduler.task_graph_node[]?
 local function register_children(children, world, sched, parent_task)
     if children == nil then
         return nil
@@ -155,9 +155,9 @@ local function register_children(children, world, sched, parent_task)
     return children_disposers
 end
 
----@param world world
----@param sched scheduler
----@param parent_task? scheduler.task_graph_node
+---@param world sia.world
+---@param sched sia.scheduler
+---@param parent_task? sia.scheduler.task_graph_node
 function system:register(world, sched, parent_task)
     local dep_tasks = {parent_task}
     add_depended_system_tasks(dep_tasks, self.depend, world, sched)

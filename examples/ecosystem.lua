@@ -7,10 +7,10 @@ local unpack = unpack or table.unpack
 
 math.randomseed(os.clock())
 
----@class ecosystem: world
+---@class ecosystem: sia.world
 ---@field delta_time number
 ---@field time number
----@field scheduler scheduler
+---@field scheduler sia.scheduler
 local ecosystem = world()
 ecosystem.delta_time = 0
 ecosystem.time = 0
@@ -114,8 +114,8 @@ end)
 ---@class creature.action_rule
 ---@field type string
 ---@field cooldown number
----@field predicate fun(entity: entity, world?: world): boolean
----@field execute fun(entity: entity, world?: world, sched?: scheduler)
+---@field predicate fun(entity: sia.entity, world?: sia.world): boolean
+---@field execute fun(entity: sia.entity, world?: sia.world, sched?: sia.scheduler)
 
 local creature = entity.component(function(props)
     return {

@@ -1,12 +1,12 @@
----@class dispatcher
----@field package _cmd_listeners table<any, dispatcher.command_handler[]>
----@field package _sender_listeners table<any, dispatcher.command_handler[]>
+---@class sia.dispatcher
+---@field package _cmd_listeners table<any, sia.dispatcher.command_handler[]>
+---@field package _sender_listeners table<any, sia.dispatcher.command_handler[]>
 ---@field package _sending boolean
----@field package _listeners_to_remove table<dispatcher.command_handler>
----@operator call(): dispatcher
+---@field package _listeners_to_remove table<sia.dispatcher.command_handler>
+---@operator call(): sia.dispatcher
 local dispatcher = {}
 
----@alias dispatcher.command_handler fun(command: any, ...): any | nil
+---@alias sia.dispatcher.command_handler fun(command: any, ...): any | nil
 
 dispatcher.__index = dispatcher
 setmetatable(dispatcher, {
@@ -19,9 +19,9 @@ setmetatable(dispatcher, {
     end
 })
 
----@param listeners table<any, dispatcher.command_handler[]>
+---@param listeners table<any, sia.dispatcher.command_handler[]>
 ---@param index any
----@param handler dispatcher.command_handler
+---@param handler sia.dispatcher.command_handler
 local function raw_listen(listeners, index, handler)
     local ls = listeners[index]
     if ls == nil then
@@ -31,9 +31,9 @@ local function raw_listen(listeners, index, handler)
     ls[#ls+1] = handler
 end
 
----@param listeners table<any, dispatcher.command_handler[]>
+---@param listeners table<any, sia.dispatcher.command_handler[]>
 ---@param index any
----@param handler dispatcher.command_handler
+---@param handler sia.dispatcher.command_handler
 ---@return boolean
 local function raw_unlisten(listeners, index, handler)
     local ls = listeners[index]
@@ -68,13 +68,13 @@ local function raw_unlisten(listeners, index, handler)
 end
 
 ---@param command any
----@param handler dispatcher.command_handler
+---@param handler sia.dispatcher.command_handler
 function dispatcher:listen(command, handler)
     raw_listen(self._cmd_listeners, command, handler)
 end
 
 ---@param command any
----@param handler dispatcher.command_handler
+---@param handler sia.dispatcher.command_handler
 ---@return boolean
 function dispatcher:unlisten(command, handler)
     if self._sending then
@@ -84,13 +84,13 @@ function dispatcher:unlisten(command, handler)
 end
 
 ---@param sender any
----@param handler dispatcher.command_handler
+---@param handler sia.dispatcher.command_handler
 function dispatcher:listen_on(sender, handler)
     raw_listen(self._sender_listeners, sender, handler)
 end
 
 ---@param sender any
----@param handler dispatcher.command_handler
+---@param handler sia.dispatcher.command_handler
 ---@return boolean
 function dispatcher:unlisten_on(sender, handler)
     if self._sending then
@@ -104,7 +104,7 @@ function dispatcher:clear_listeners_on(sender)
     self._sender_listeners[sender] = nil
 end
 
----@param listeners dispatcher.command_handler[]
+---@param listeners sia.dispatcher.command_handler[]
 ---@param command any
 ---@param sender any
 local function execute_listeners(listeners, command, sender, ...)

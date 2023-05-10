@@ -1,16 +1,16 @@
 local group = require("sia.group")
 local dispatcher = require("sia.dispatcher")
 
----@class world: group
----@field package _groups world.group[]
----@field dispatcher dispatcher
----@operator call(dispatcher?): world
+---@class sia.world: sia.group
+---@field package _groups sia.world.group[]
+---@field dispatcher sia.dispatcher
+---@operator call(sia.dispatcher?): sia.world
 local world = {}
 
----@class world.group: group
----@field world world
+---@class sia.world.group: sia.group
+---@field world sia.world
 ---@field index integer
----@field predicate? fun(entity: entity): any
+---@field predicate? fun(entity: sia.entity): any
 
 world.__index = world
 setmetatable(world, {
@@ -23,10 +23,10 @@ setmetatable(world, {
     end
 })
 
----@param predicate? fun(entity: entity): any
----@return world.group
+---@param predicate? fun(entity: sia.entity): any
+---@return sia.world.group
 function world:create_group(predicate)
-    local g = group() --[[@as world.group]]
+    local g = group() --[[@as sia.world.group]]
     g.world = self
     g.predicate = predicate
 
@@ -52,7 +52,7 @@ function world:create_group(predicate)
     return g
 end
 
----@param group world.group
+---@param group sia.world.group
 ---@return boolean
 function world:remove_group(group)
     if group.world ~= self then
@@ -128,7 +128,7 @@ function world:clear()
     end
 end
 
----@param entity? entity
+---@param entity? sia.entity
 function world:refresh(entity)
     local groups = self._groups
 
@@ -167,8 +167,8 @@ function world:refresh(entity)
     end
 end
 
----@param entity entity
----@param command entity.component.command
+---@param entity sia.entity
+---@param command sia.entity.component.command
 function world:modify(entity, command, ...)
     local comp = entity[command.component_key]
     if comp == nil then
