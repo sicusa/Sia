@@ -1,5 +1,5 @@
 ---@class sia.entity
----@operator call(sia.entity.component[]): sia.entity
+---@overload fun(components: sia.entity.component[]): sia.entity
 local entity = {}
 
 entity.__index = entity
@@ -33,7 +33,7 @@ end
 ---@class sia.entity.component
 ---@field package _initializer fun(...): table
 ---@field [string] any
----@operator call(fun(...): table): sia.entity.component
+---@overload fun(initializer: fun(...): table): sia.entity.component
 local component = {}
 entity.component = component
 
@@ -49,10 +49,10 @@ setmetatable(component, {
 
 ---@class sia.entity.component.command
 ---@field component_key sia.entity.component
----@operator call(...): sia.entity.component.command
+---@overload fun(component_key: any, handler: fun(component: sia.entity.component, ...)): sia.entity.component.command
 local command = {
-    __call = function(self, component_key, ...)
-        self[1](component_key, ...)
+    __call = function(self, component, ...)
+        self[1](component, ...)
     end
 }
 entity.command = command

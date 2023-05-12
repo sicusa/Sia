@@ -6,7 +6,7 @@
 ---@field package _task_graph_nodes table<sia.scheduler.task_graph_node, boolean | integer>
 ---@field package _tasks_to_remove sia.scheduler.task_graph_node[]
 ---@field package _ticking boolean
----@operator call:sia.scheduler
+---@overload fun(): sia.scheduler
 local scheduler = {}
 
 ---@alias sia.scheduler.callback fun(): any | nil

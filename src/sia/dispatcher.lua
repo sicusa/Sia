@@ -3,7 +3,7 @@
 ---@field package _sender_listeners table<any, sia.dispatcher.command_handler[]>
 ---@field package _sending boolean
 ---@field package _listeners_to_remove table<sia.dispatcher.command_handler>
----@operator call(): sia.dispatcher
+---@overload fun(): sia.dispatcher
 local dispatcher = {}
 
 ---@alias sia.dispatcher.command_handler fun(command: any, ...): any | nil

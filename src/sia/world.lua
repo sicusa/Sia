@@ -4,7 +4,7 @@ local dispatcher = require("sia.dispatcher")
 ---@class sia.world: sia.group
 ---@field package _groups sia.world.group[]
 ---@field dispatcher sia.dispatcher
----@operator call(sia.dispatcher?): sia.world
+---@overload fun(dispatcher?: sia.dispatcher): sia.world
 local world = {}
 
 ---@class sia.world.group: sia.group

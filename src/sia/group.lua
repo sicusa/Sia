@@ -3,7 +3,7 @@ local unpack = unpack or table.unpack
 ---@class sia.group
 ---@field package _indices table<sia.entity, integer>
 ---@field [integer] sia.entity
----@operator call(sia.entity[]?): sia.group
+---@overload fun(entities?: sia.entity[]): sia.group
 local group = {}
 
 group.__index = group

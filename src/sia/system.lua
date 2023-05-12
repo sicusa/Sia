@@ -12,7 +12,7 @@ local group = require("sia.group")
 ---@field execute? sia.system.executor
 ---@field package _select_key string
 ---@field package _tasks table<sia.scheduler, table<sia.scheduler.task_graph_node, sia.world>>
----@operator call(system.options): sia.system
+---@overload fun(options: system.options): sia.system
 local system = {}
 
 ---@alias sia.system.executor fun(world?: sia.world, sched?: sia.scheduler, entity?: sia.entity): any
