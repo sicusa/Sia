@@ -16,7 +16,7 @@ local group = require("sia.group")
 local system = {}
 
 ---@alias sia.system.executor fun(world?: sia.world, sched?: sia.scheduler, entity?: sia.entity): any
----@alias sia.system.triggerable_command sia.entity.component.command | "add" | "remove"
+---@alias sia.system.triggerable_command sia.command | "add" | "remove"
 
 ---@class system.options
 ---@field name? string
@@ -43,8 +43,8 @@ local function calculate_select_key(select)
     return table.concat(t)
 end
 
----@param triggers sia.entity.component.command[]
----@return table<sia.entity.component.command, true>?
+---@param triggers sia.command[]
+---@return table<sia.command, true>?
 local function to_trigger_table(triggers)
     if triggers == nil then
         return nil
@@ -86,7 +86,7 @@ setmetatable(system, {
 local world_groups_cache = {}
 
 ---@param world sia.world
----@param select sia.entity.component[]
+---@param select sia.component[]
 ---@return system.group
 local function create_system_group(world, select)
     local grp = world:create_group(function(e)

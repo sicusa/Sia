@@ -168,7 +168,7 @@ function world:refresh(entity)
 end
 
 ---@param entity sia.entity
----@param command sia.entity.component.command
+---@param command sia.command
 function world:modify(entity, command, ...)
     local comp = entity[command.component_key]
     if comp == nil then
