@@ -156,7 +156,8 @@ local function add_depended_tasks(task_seq, offset, node)
         count = count + add_depended_tasks(task_seq, count + offset, dep_node)
     end
 
-    task_seq[count + offset + 1] = node
+    count = count + 1
+    task_seq[count + offset] = node
     node.status = "added"
     return count
 end
