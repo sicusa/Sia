@@ -169,13 +169,15 @@ end
 
 ---@param entity sia.entity
 ---@param command sia.command
+---@return boolean
 function world:modify(entity, command, ...)
     local comp = entity[command.component_key]
     if comp == nil then
-        error("cannot modify entity: component not found")
+        return false
     end
     command(comp, ...)
     self.dispatcher:send(command, entity, ...)
+    return true
 end
 
 return world
