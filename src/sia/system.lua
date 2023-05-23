@@ -9,13 +9,15 @@ local group = require("sia.group")
 ---@field depend? sia.system[]
 ---@field select? table[]
 ---@field trigger? table<sia.system.triggerable_command, true>
+---@field before_execute? sia.system.before_executor
 ---@field execute? sia.system.executor
 ---@field package _select_key string
 ---@field package _tasks table<sia.scheduler, table<sia.scheduler.task_graph_node, sia.world>>
 ---@overload fun(options: system.options): sia.system
 local system = {}
 
----@alias sia.system.executor fun(world?: sia.world, sched?: sia.scheduler, entity?: sia.entity): any
+---@alias sia.system.before_executor fun(world?: sia.world, sched?: sia.scheduler): any?
+---@alias sia.system.executor fun(world?: sia.world, sched?: sia.scheduler, entity?: sia.entity, arg?: any): any
 ---@alias sia.system.triggerable_command sia.command | "add" | "remove"
 
 ---@class system.options
@@ -27,6 +29,7 @@ local system = {}
 ---@field depend? sia.system[]
 ---@field select? table[]
 ---@field trigger? sia.system.triggerable_command[]
+---@field before_execute? sia.system.before_executor
 ---@field execute? sia.system.executor
 
 ---@param select table[]
@@ -164,6 +167,7 @@ function system:register(world, sched, parent_task)
 
     local children = self.children
     local execute = self.execute
+    local before_execute = self.before_execute
 
     if execute == nil then
         local children_disposers =
@@ -175,7 +179,7 @@ function system:register(world, sched, parent_task)
             end
         end
     end
-        
+
     local tasks = self._tasks
     local tasks_entry = tasks[sched]
 
@@ -256,38 +260,83 @@ function system:register(world, sched, parent_task)
 
     if select_group ~= nil then
         if trigger ~= nil then
-            task_func = function()
-                local len = #select_group
-                if len == 0 then return end
+            if before_execute == nil then
+                task_func = function()
+                    local len = #select_group
+                    if len == 0 then return end
 
-                local i = 1
-                while i <= len do
-                    if execute(world, sched, select_group[i]) then
-                        dispose()
-                        return
+                    local i = 1
+                    while i <= len do
+                        if execute(world, sched, select_group[i]) then
+                            dispose()
+                            return
+                        end
+                        i = i + 1
+                        len = #select_group
                     end
-                    i = i + 1
-                    len = #select_group
-                end
 
-                select_group:clear()
+                    select_group:clear()
+                end
+            else
+                task_func = function()
+                    local len = #select_group
+                    if len == 0 then return end
+
+                    local i = 1
+                    local arg = before_execute(world, sched)
+
+                    while i <= len do
+                        if execute(world, sched, select_group[i], arg) then
+                            dispose()
+                            return
+                        end
+                        i = i + 1
+                        len = #select_group
+                    end
+
+                    select_group:clear()
+                end
             end
         else
-            task_func = function()
-                local i = 1
-                while i <= #select_group do
-                    if execute(world, sched, select_group[i]) then
-                        dispose()
-                        return
+            if before_execute == nil then
+                task_func = function()
+                    local i = 1
+                    while i <= #select_group do
+                        if execute(world, sched, select_group[i]) then
+                            dispose()
+                            return
+                        end
+                        i = i + 1
                     end
-                    i = i + 1
+                end
+            else
+                task_func = function()
+                    local i = 1
+                    local arg = before_execute(world, sched)
+
+                    while i <= #select_group do
+                        if execute(world, sched, select_group[i], arg) then
+                            dispose()
+                            return
+                        end
+                        i = i + 1
+                    end
                 end
             end
         end
     else
-        task_func = function()
-            if execute(world, sched) then
-                dispose()
+        if before_execute == nil then
+            task_func = function()
+                if execute(world, sched) then
+                    dispose()
+                end
+            end
+        else
+            task_func = function()
+                local arg = before_execute(world, sched)
+                if execute(world, sched, nil, arg) then
+                    dispose()
+                end
             end
         end
     end
