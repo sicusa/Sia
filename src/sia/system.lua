@@ -311,10 +311,13 @@ function system:register(world, sched, parent_task)
                 end
             else
                 task_func = function()
+                    local len = #select_group
+                    if len == 0 then return end
+
                     local i = 1
                     local arg = before_execute(world, sched)
 
-                    while i <= #select_group do
+                    while i <= len do
                         if execute(world, sched, select_group[i], arg) then
                             dispose()
                             return
