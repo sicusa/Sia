@@ -106,7 +106,6 @@ function world:remove(entity)
     end
 
     self.dispatcher:send("remove", entity, self)
-    self.dispatcher:clear_listeners_on(entity)
     return true
 end
 
