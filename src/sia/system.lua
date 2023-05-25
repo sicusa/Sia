@@ -73,6 +73,7 @@ setmetatable(system, {
         instance.depend = options.depend
         instance.select = options.select
         instance.trigger = to_trigger_table(options.trigger)
+        instance.before_execute = options.before_execute
         instance.execute = options.execute
 
         instance._select_key = calculate_select_key(options.select)
